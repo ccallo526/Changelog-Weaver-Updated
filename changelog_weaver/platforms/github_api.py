@@ -1,5 +1,6 @@
 """GitHub API module for interacting with GitHub issues and pull requests."""
 
+import asyncio
 from typing import List, Optional, Dict, Union, Tuple
 from datetime import datetime
 from github import Github
