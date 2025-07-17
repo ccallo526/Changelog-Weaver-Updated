@@ -34,6 +34,9 @@ class ENVVARS(Enum):
     BRANCH = "BRANCH"
     FROM_TAG = "FROM_TAG"
     TO_TAG = "TO_TAG"
+    # Add these two lines
+    FROM_DATE = "FROM_DATE"
+    TO_DATE = "TO_DATE"
 
 
 class BaseConfig:

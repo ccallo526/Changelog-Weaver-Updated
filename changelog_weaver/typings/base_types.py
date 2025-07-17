@@ -83,3 +83,6 @@ class PlatformInfo:
     branch: str = ""
     from_tag: str = ""
     to_tag: str = ""
+    # Add these two lines
+    from_date: Optional[str] = None
+    to_date: Optional[str] = None

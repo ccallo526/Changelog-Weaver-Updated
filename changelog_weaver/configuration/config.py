@@ -46,6 +46,9 @@ class Config(BaseConfig):
                 branch=env.get(ENVVARS.BRANCH, ""),
                 from_tag=env.get(ENVVARS.FROM_TAG, ""),
                 to_tag=env.get(ENVVARS.TO_TAG, ""),
+                # Add these two lines
+                from_date=env.get(ENVVARS.FROM_DATE),
+                to_date=env.get(ENVVARS.TO_DATE),
             )
         except ValueError as e:
             log.error("Error parsing project: %s", str(e))
@@ -161,6 +164,9 @@ def parse_project(
         branch=branch,
         from_tag=from_tag,
         to_tag=to_tag,
+        # Add these parameters
+        from_date=from_date,
+        to_date=to_date,
     )
 
     return Project(

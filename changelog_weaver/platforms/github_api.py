@@ -227,10 +227,71 @@ class GitHubAPI:
         return [await self._convert_to_work_item(pr) for pr in pull_requests]
 
     async def get_all_work_items(self, **kwargs) -> List[HierarchicalWorkItem]:
-        """Get all work items including issues and pull requests."""
-        issues = await self.get_issues_with_details(**kwargs)
-        pull_requests = await self.get_pull_requests(**kwargs)
+        # NEW: Prioritize dates if they exist
+        from_date = self.config.platform.from_date
+        to_date = self.config.platform.to_date
 
+        if from_date and to_date:
+            date_range = f"{from_date}..{to_date}"
+            log.info(f"Found date range in config. Filtering Issues and PRs within: {date_range}")
+
+            # Use the date range for the queries
+            pr_query = f"repo:{self.config.repo_name} is:pr is:merged merged:{date_range}"
+            issue_query = f"repo:{self.config.repo_name} is:issue is:closed closed:{date_range}"
+
+            merged_prs = self.client.search_issues(query=pr_query)
+            closed_issues = self.client.search_issues(query=issue_query)
+
+            pr_tasks = [self._convert_to_work_item(pr) for pr in merged_prs]
+            issue_tasks = [self._convert_to_work_item(issue) for issue in closed_issues]
+            pull_requests = await asyncio.gather(*pr_tasks)
+            issues = await asyncio.gather(*issue_tasks)
+        
+        else:
+            from_tag_name = self.from_tag
+            to_tag_name = self.to_tag
+
+            if not from_tag_name or not to_tag_name:
+                log.warning("from_tag or to_tag is not set. Fetching all issues and PRs without date filtering.")
+                # Fallback to old behavior if tags are not provided
+                issues = await self.get_issues_with_details(state="closed", **kwargs)
+                pull_requests = await self.get_pull_requests(state="closed", **kwargs)
+
+            else:
+                try:
+                    # Get the commit objects for the tags
+                    from_commit_obj = self.repo.get_commit(self.repo.get_tag(from_tag_name).commit.sha)
+                    to_commit_obj = self.repo.get_commit(self.repo.get_tag(to_tag_name).commit.sha)
+
+                    # Get the dates and format them for the GitHub API search query (ISO 8601)
+                    from_date = from_commit_obj.commit.author.date.replace(tzinfo=timezone.utc).isoformat()
+                    to_date = to_commit_obj.commit.author.date.replace(tzinfo=timezone.utc).isoformat()
+                    
+                    date_range = f"{from_date}..{to_date}"
+                    log.info(f"Filtering Issues and PRs within date range: {date_range}")
+
+                    # Construct queries for merged PRs and closed issues within the date range
+                    pr_query = f"repo:{self.config.repo_name} is:pr is:merged merged:{date_range}"
+                    issue_query = f"repo:{self.config.repo_name} is:issue is:closed closed:{date_range}"
+
+                    # Use the search API which respects date ranges
+                    merged_prs = self.client.search_issues(query=pr_query)
+                    closed_issues = self.client.search_issues(query=issue_query)
+                    
+                    # Convert the search results to our internal WorkItem format
+                    # Use asyncio.gather for concurrent processing
+                    pr_tasks = [self._convert_to_work_item(pr) for pr in merged_prs]
+                    issue_tasks = [self._convert_to_work_item(issue) for issue in closed_issues]
+                    
+                    pull_requests = await asyncio.gather(*pr_tasks)
+                    issues = await asyncio.gather(*issue_tasks)
+
+                except Exception as e:
+                    log.error(f"Failed to get issues/PRs by tag date range: {e}. Falling back to old method.")
+                    # Fallback to old behavior on any error (e.g., tag not found)
+                    issues = await self.get_issues_with_details(state="closed", **kwargs)
+                    pull_requests = await self.get_pull_requests(state="closed", **kwargs)
+        
         issues_root = HierarchicalWorkItem(
             id=-1,
             type="Issue",
@@ -239,6 +300,7 @@ class GitHubAPI:
             icon="https://github.githubassets.com/images/modules/logos_page/Octocat.png",
             root=True,
             orphan=False,
+            # Filter out items that are actually PRs
             children=[
                 HierarchicalWorkItem(**issue.__dict__)
                 for issue in issues
@@ -255,9 +317,8 @@ class GitHubAPI:
             orphan=False,
             children=[HierarchicalWorkItem(**pr.__dict__) for pr in pull_requests],
         )
-
         return [issues_root, prs_root]
-
+    
     async def _convert_to_work_item(
         self, github_item: Union[Issue, PullRequest]
     ) -> WorkItem:
