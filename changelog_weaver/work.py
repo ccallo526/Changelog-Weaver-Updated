@@ -61,6 +61,9 @@ class Work:
                     branch=config.project.platform.branch,
                     from_tag=config.project.platform.from_tag,
                     to_tag=config.project.platform.to_tag,
+                    # Add these two lines to pass the dates
+                    from_date=config.project.platform.from_date,
+                    to_date=config.project.platform.to_date,
                 )
             )
         raise ValueError(f"Unsupported platform: {self.platform}")

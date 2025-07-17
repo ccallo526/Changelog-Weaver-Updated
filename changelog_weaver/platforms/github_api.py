@@ -228,8 +228,8 @@ class GitHubAPI:
 
     async def get_all_work_items(self, **kwargs) -> List[HierarchicalWorkItem]:
         # NEW: Prioritize dates if they exist
-        from_date = self.config.platform.from_date
-        to_date = self.config.platform.to_date
+        from_date = self.config.from_date
+        to_date = self.config.to_date
 
         if from_date and to_date:
             date_range = f"{from_date}..{to_date}"

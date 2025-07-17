@@ -17,6 +17,9 @@ class GitHubConfig:
     branch: Optional[str] = None
     from_tag: Optional[str] = None
     to_tag: Optional[str] = None
+    # Add these two lines
+    from_date: Optional[str] = None
+    to_date: Optional[str] = None
     client: Github = field(init=False)
 
     def __post_init__(self):
