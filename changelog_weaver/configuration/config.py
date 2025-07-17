@@ -96,6 +96,9 @@ def parse_project(
     branch: str = "",
     from_tag: str = "",
     to_tag: str = "",
+    # Add these parameters
+    from_date: Optional[str] = None,
+    to_date: Optional[str] = None,
 ) -> Project:
     """
     Extract platform information from the given URL and return a Project object.
